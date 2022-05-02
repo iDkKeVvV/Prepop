@@ -1,7 +1,6 @@
 #Import tkinter library for GUI interface
 import tkinter
 from tkinter.filedialog import askdirectory, askopenfilename
-from turtle import title
 #Import tkinter for excel manipulation
 import xlrd
 #Import pdfrw for pdf manipulation
