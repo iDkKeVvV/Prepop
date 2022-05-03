@@ -1,10 +1,12 @@
 #Import tkinter library for GUI interface
+from math import trunc
 import tkinter
 from tkinter.filedialog import askdirectory, askopenfilename
 #Import tkinter for excel manipulation
 import xlrd
 #Import pdfrw for pdf manipulation
 import pdfrw
+from datetime import datetime
 
 #May or may not define a constructor 
 def __init__(self, temp_dir, output_dir):
@@ -59,12 +61,32 @@ try:
             if blank['/Subtype'] == '/Widget':
                 try:
                     key = blank['/T'][1:-1]
+                    #print("KEY",key)
+
                     for headings in col_dict:
-                        #print(key,headings)
-                        if headings.lower() in key.lower():
-                            pdfstr = pdfrw.objects.pdfstring.PdfString.encode("THIS IS A TEST STRING")
+                        i = 0 
+                        #print(headings)
+
+                        if headings.lower() in key.lower() and headings != "Address":
+                            print(headings,key)
+                            print(col_dict[headings][i])
+                            if type(col_dict[headings][i]) == float:
+                                print( col_dict[headings][i])
+                                col_dict[headings][i] = trunc(col_dict[headings][i])
+                                print( col_dict[headings][i])
+                            pdfstr = pdfrw.objects.pdfstring.PdfString.encode(str(col_dict[headings][i]))
                             blank.update(pdfrw.PdfDict(V=pdfstr))
-                            print(headings, key)
+                            col_dict[headings].pop(i)
+                            break
+
+                        elif key == "date2":
+                            pdfstr = pdfrw.objects.pdfstring.PdfString.encode(datetime.today().strftime('%m/%d/%Y'))
+                            blank.update(pdfrw.PdfDict(V=pdfstr))
+                            col_dict[headings].pop(i)
+                            break
+                            
+                            #print(headings, key)
+                                
                     
                     # for heading in col_dict:
                     #     i = 0 
