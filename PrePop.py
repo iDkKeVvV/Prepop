@@ -20,7 +20,7 @@ try:
     xl_file = xlrd.open_workbook(xl_source)
 
     #GUI for output directory 
-    output_dir = askdirectory(title="Choose your desired output directory")
+    output_dir = askopenfilename(title="Choose PDF reference form")
     #print(output_dir)
 
     #Take the sheet object from the workbook to access # of columns and rows 
@@ -47,7 +47,7 @@ try:
     #print(col_dict)
 
     #Scrape out the fillable fields from the PDF 
-    pdf_temp = pdfrw.PdfReader(r'C:\Users\svc_grp_training\OneDrive - The Equitable Life Insurance Company of Canada\Documents\Python Scripts\test.pdf')
+    pdf_temp = pdfrw.PdfReader(output_dir)
     #Iterate through all of the pages of the PDF document
     for page in pdf_temp.pages:
         #Take out all editable fields
