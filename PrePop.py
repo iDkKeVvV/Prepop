@@ -4,7 +4,7 @@ from tkinter.filedialog import askdirectory, askopenfilename
 #Import tkinter for excel manipulation
 import xlrd
 #Import pdfrw for pdf manipulation
-from pdfrw import *
+import pdfrw
 
 #May or may not define a constructor 
 def __init__(self, temp_dir, output_dir):
@@ -19,23 +19,8 @@ try:
 
     #GUI for output directory 
     output_dir = askdirectory(title="Choose your desired output directory")
+    #print(output_dir)
 
-    #Scrape out the fillable fields from the PDF 
-    pdf_temp = PdfReader('test.pdf')
-    #Iterate through all of the pages of the PDF document
-    for page in pdf_temp.pages:
-        #Take out all editable fields
-        blanks = page['/Annots']
-
-        #Iterate through the names of said fields 
-        for blank in blanks:
-            try:
-                key = blank['/T'][1:-1]
-                print(key)
-            #If there is a NoneType we want to catch the error so we can skip over it
-            except TypeError:
-                continue
-    
     #Take the sheet object from the workbook to access # of columns and rows 
     sheet = xl_file.sheets()
     #Take the first sheet of the XL document (only one present)
@@ -57,14 +42,52 @@ try:
         #Initialize the keys 
         else:
             col_dict[(sheet.cell_value(0,row))] = None
+    #print(col_dict)
 
-    print(col_dict)
+    #Scrape out the fillable fields from the PDF 
+    pdf_temp = pdfrw.PdfReader(r'C:\Users\svc_grp_training\OneDrive - The Equitable Life Insurance Company of Canada\Documents\Python Scripts\test.pdf')
+    #Iterate through all of the pages of the PDF document
+    for page in pdf_temp.pages:
+        #Take out all editable fields
+        blanks = page['/Annots']
+        #Check that annotations are instantiated 
+        if blanks is None:
+            continue
+
+        #Iterate through the names of said fields 
+        for blank in blanks:
+            if blank['/Subtype'] == '/Widget':
+                try:
+                    key = blank['/T'][1:-1]
+                    for headings in col_dict:
+                        #print(key,headings)
+                        if headings.lower() in key.lower():
+                            pdfstr = pdfrw.objects.pdfstring.PdfString.encode("THIS IS A TEST STRING")
+                            blank.update(pdfrw.PdfDict(V=pdfstr))
+                            print(headings, key)
+                    
+                    # for heading in col_dict:
+                    #     i = 0 
+                    #     #print("This is the heading",heading)
+                    #     #print("This is the key", key)
+                    #     if heading.lower() in key.lower():
+                    #         print(key, heading)
+                    #         #print("This is the key", key, "This is the dictionary elem" ,col_dict[heading][i])
+                    #         #PLACE THE ACTUAL ELEMENT 
+                    #         col_dict[heading].pop(i)
+                    #         #print(col_dict[heading][i])
+                    #         break  
+                #If there is a NoneType we want to catch the error so we can skip over it
+                except TypeError:
+                    continue
+
+        pdf_temp.Root.AcroForm.update(
+            pdfrw.PdfDict(NeedAppearances=pdfrw.PdfObject('true')))
+        pdfrw.PdfWriter().write(output_dir + "data.pdf", pdf_temp)
+
+
 #If a file is not selected or an .xls file is not selected then an error box is displayed.
 except FileNotFoundError:
     tkinter.messagebox.showerror(title="Error", message="A file was not selected. The program will close.")
 except xlrd.biffh.XLRDError:
     tkinter.messagebox.showerror("You did not select the appropriate Excel Document.")
-
-
-
-
