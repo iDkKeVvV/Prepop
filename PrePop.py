@@ -1,7 +1,7 @@
 #Import tkinter library for GUI interface
 from math import trunc
 import tkinter
-from tkinter.filedialog import askdirectory, askopenfilename
+from tkinter.filedialog import askopenfilename
 #Import tkinter for excel manipulation
 import xlrd
 #Import pdfrw for pdf manipulation
@@ -19,9 +19,8 @@ try:
     #Opening worksheet with XLRD
     xl_file = xlrd.open_workbook(xl_source)
 
-    #GUI for output directory 
+    #GUI for reference PDF location
     output_dir = askopenfilename(title="Choose PDF reference form")
-    #print(output_dir)
 
     #Take the sheet object from the workbook to access # of columns and rows 
     sheet = xl_file.sheets()
@@ -48,68 +47,97 @@ try:
 
     #Scrape out the fillable fields from the PDF 
     pdf_temp = pdfrw.PdfReader(output_dir)
+
+    cum_string = ""
+    #while(col_dict.get())
     #Iterate through all of the pages of the PDF document
-    for page in pdf_temp.pages:
-        #Take out all editable fields
-        blanks = page['/Annots']
-        #Check that annotations are instantiated 
-        if blanks is None:
-            continue
+    while len(col_dict.get("Policyholder")) != 0:
+        counter = 0 
+        for page in pdf_temp.pages:
+            #Take out all editable fields
+            blanks = page['/Annots']
+            #Check that annotations are instantiated 
+            if blanks is None:
+                continue
+            
+            #Iterate through the names of said fields 
+            for blank in blanks:
+                if blank['/Subtype'] == '/Widget':
+                    try:
+                        key = blank['/T'][1:-1]
 
-        #Iterate through the names of said fields 
-        for blank in blanks:
-            if blank['/Subtype'] == '/Widget':
-                try:
-                    key = blank['/T'][1:-1]
-                    #print("KEY",key)
+                        for headings in col_dict:
+                            i = 0 
+                            #Looking for similar names and matching 
+                            if headings.lower() in key.lower() and not (headings == "Address" and key == "email address"):
+                                cum_string = col_dict[headings][i]
+                                #Number format in XL shows up as a flot. Remove all decimal values
+                                if type(col_dict[headings][i]) == float:
+                                    cum_string = str(trunc(col_dict[headings][i]))
+                                #Break and move to the next element
+                                break
 
-                    for headings in col_dict:
-                        i = 0 
-                        #print(headings)
-
-                        if headings.lower() in key.lower() and headings != "Address":
-                            print(headings,key)
-                            print(col_dict[headings][i])
-                            if type(col_dict[headings][i]) == float:
-                                print( col_dict[headings][i])
-                                col_dict[headings][i] = trunc(col_dict[headings][i])
-                                print( col_dict[headings][i])
-                            pdfstr = pdfrw.objects.pdfstring.PdfString.encode(str(col_dict[headings][i]))
-                            blank.update(pdfrw.PdfDict(V=pdfstr))
-                            col_dict[headings].pop(i)
-                            break
-
-                        elif key == "date2":
-                            pdfstr = pdfrw.objects.pdfstring.PdfString.encode(datetime.today().strftime('%m/%d/%Y'))
-                            blank.update(pdfrw.PdfDict(V=pdfstr))
-                            col_dict[headings].pop(i)
-                            break
+                            elif headings == "Certificate #" and key == "cert#":
+                                cum_string = col_dict[headings][i]
                             
-                            #print(headings, key)
-                                
-                    
-                    # for heading in col_dict:
-                    #     i = 0 
-                    #     #print("This is the heading",heading)
-                    #     #print("This is the key", key)
-                    #     if heading.lower() in key.lower():
-                    #         print(key, heading)
-                    #         #print("This is the key", key, "This is the dictionary elem" ,col_dict[heading][i])
-                    #         #PLACE THE ACTUAL ELEMENT 
-                    #         col_dict[heading].pop(i)
-                    #         #print(col_dict[heading][i])
-                    #         break  
-                #If there is a NoneType we want to catch the error so we can skip over it
-                except TypeError:
-                    continue
+                            elif headings == "Date of Employment" and key == "Date Employed Full time mmddyyyy":
+                                dt = datetime.fromordinal(datetime(1900, 1, 1).toordinal() + trunc(col_dict[headings][i]) - 2).strftime('%m/%d/%Y')
+                                dt = str(dt).split()
+                                cum_string = str(dt[0])
 
+                            elif (key =="Plan Members Name first middle initial last" and ("name" in headings.lower() and " member" in headings.lower())):
+                                cum_string += col_dict[headings][i] + " "
+                                
+                                if headings == "Plan Member Last Name":
+                                    cum_string = cum_string.strip()
+                                    #Break and move to the next element
+                                    break
+
+                            elif key == "Number of hours worked per week" and headings == "Standard Hours":
+                                cum_string = str(col_dict[headings][i])
+                                break
+                            
+                            elif key == "undefined" and headings == "HCSA":
+                                cum_string = str(col_dict[headings][i])
+                                break
+                            
+                            #Edge case considering the final date window. Initialize with todays date and time
+                            elif key == "date2":
+                                cum_string = datetime.today().strftime('%m/%d/%Y')
+                                break
+                        
+                        if cum_string != "":
+                            print("What we are deleteing" ,headings)
+                            print(len(col_dict["Policyholder"]))
+                            #Update the field inside of the PDF 
+                            pdfstr = pdfrw.objects.pdfstring.PdfString.encode(cum_string)
+                            blank.update(pdfrw.PdfDict(V=pdfstr))
+                            #Remove the element from the list so it does not get repeated 
+                            #print(key)
+                            del (col_dict[headings][i])
+                            cum_string = ""
+
+                    #If there is a NoneType we want to catch the error so we can skip over it
+                    except TypeError:
+                        continue
+            
+        #Update the PDF so that the filled elements are visible from the start.
         pdf_temp.Root.AcroForm.update(
             pdfrw.PdfDict(NeedAppearances=pdfrw.PdfObject('true')))
-        pdfrw.PdfWriter().write(output_dir + "data.pdf", pdf_temp)
+        #Write the new PDF to the location specified earlier
+        #print(output_dir)
+        split_out = output_dir.split('/')
+        split_out.pop(-1)
+        cleaned_out ='/'.join(split_out)
+        #print("This is cleaned out ", cleaned_out)
+        pdfrw.PdfWriter().write(cleaned_out + "/filled_" + str(counter) + ".pdf", pdf_temp)
+        counter += 1
 
 
 #If a file is not selected or an .xls file is not selected then an error box is displayed.
 except FileNotFoundError:
     tkinter.messagebox.showerror(title="Error", message="A file was not selected. The program will close.")
 except xlrd.biffh.XLRDError:
-    tkinter.messagebox.showerror("You did not select the appropriate Excel Document.")
+    tkinter.messagebox.showerror(title="Error", message="You did not select the appropriate Excel Document.")
+except pdfrw.errors.PdfParseError:
+    tkinter.messagebox.showerror(title="Error", message="You did not select the appropriate PDF Document.")
