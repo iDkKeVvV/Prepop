@@ -50,9 +50,9 @@ try:
 
     cum_string = ""
     #while(col_dict.get())
+    counter = 0 
     #Iterate through all of the pages of the PDF document
     while len(col_dict.get("Policyholder")) != 0:
-        counter = 0 
         for page in pdf_temp.pages:
             #Take out all editable fields
             blanks = page['/Annots']
@@ -79,19 +79,24 @@ try:
 
                             elif headings == "Certificate #" and key == "cert#":
                                 cum_string = col_dict[headings][i]
+                                break
                             
                             elif headings == "Date of Employment" and key == "Date Employed Full time mmddyyyy":
                                 dt = datetime.fromordinal(datetime(1900, 1, 1).toordinal() + trunc(col_dict[headings][i]) - 2).strftime('%m/%d/%Y')
                                 dt = str(dt).split()
                                 cum_string = str(dt[0])
+                                break
 
                             elif (key =="Plan Members Name first middle initial last" and ("name" in headings.lower() and " member" in headings.lower())):
                                 cum_string += col_dict[headings][i] + " "
-                                
+                    
                                 if headings == "Plan Member Last Name":
                                     cum_string = cum_string.strip()
                                     #Break and move to the next element
                                     break
+
+                                else:
+                                    del col_dict[headings][i]
 
                             elif key == "Number of hours worked per week" and headings == "Standard Hours":
                                 cum_string = str(col_dict[headings][i])
@@ -114,7 +119,8 @@ try:
                             blank.update(pdfrw.PdfDict(V=pdfstr))
                             #Remove the element from the list so it does not get repeated 
                             #print(key)
-                            del (col_dict[headings][i])
+                            if key != "date2":
+                                del (col_dict[headings][i])
                             cum_string = ""
 
                     #If there is a NoneType we want to catch the error so we can skip over it
