@@ -7,6 +7,7 @@ import xlrd
 #Import pdfrw for pdf manipulation
 import pdfrw
 from datetime import datetime
+import os
 
 #May or may not define a constructor 
 def __init__(self, temp_dir, output_dir):
@@ -14,13 +15,17 @@ def __init__(self, temp_dir, output_dir):
     self.output_dir = temp_dir
 
 try:
+    root = tkinter.Tk()
+    root.wm_attributes('-topmost', 1)
+    root.withdraw()
+
     #GUI for XL worksheet
-    xl_source = askopenfilename(title="Choose the completed Excel Form")
+    xl_source = askopenfilename(parent=root, title="Choose the completed Excel Form", filetypes=[("Excel Workbooks",".xls")])
     #Opening worksheet with XLRD
     xl_file = xlrd.open_workbook(xl_source)
 
     #GUI for reference PDF location
-    output_dir = askopenfilename(title="Choose PDF reference form")
+    output_dir = askopenfilename(parent=root,title="Choose PDF reference form",filetypes=[("PDF",".pdf")])
 
     #Take the sheet object from the workbook to access # of columns and rows 
     sheet = xl_file.sheets()
@@ -43,14 +48,12 @@ try:
         #Initialize the keys 
         else:
             col_dict[(sheet.cell_value(0,row))] = None
-    #print(col_dict)
 
     #Scrape out the fillable fields from the PDF 
     pdf_temp = pdfrw.PdfReader(output_dir)
-
     cum_string = ""
-    #while(col_dict.get())
     counter = 0 
+
     #Iterate through all of the pages of the PDF document
     while len(col_dict.get("Policyholder")) != 0:
         for page in pdf_temp.pages:
@@ -76,8 +79,12 @@ try:
                                     cum_string = str(trunc(col_dict[headings][i]))
                                 #Break and move to the next element
                                 break
+                            
+                            elif headings == "Policyholder" and key == "Name of Plan Sponsor":
+                                cum_string = col_dict[headings][i]
+                                break
 
-                            elif headings == "Certificate #" and key == "cert#":
+                            elif headings == "Certificate #" and key == "Certificate Number":
                                 cum_string = col_dict[headings][i]
                                 break
                             
@@ -87,7 +94,8 @@ try:
                                 cum_string = str(dt[0])
                                 break
 
-                            elif (key =="Plan Members Name first middle initial last" and ("name" in headings.lower() and " member" in headings.lower())):
+                            #Concatenating the names into the singular field
+                            elif (key =="Plan Member's Name" and ("name" in headings.lower() and " member" in headings.lower())):
                                 cum_string += col_dict[headings][i] + " "
                     
                                 if headings == "Plan Member Last Name":
@@ -97,30 +105,42 @@ try:
 
                                 else:
                                     del col_dict[headings][i]
-
+                            #Number of hours
                             elif key == "Number of hours worked per week" and headings == "Standard Hours":
                                 cum_string = str(col_dict[headings][i])
                                 break
-                            
+
+                            #HCSA Value
                             elif key == "undefined" and headings == "HCSA":
                                 cum_string = str(col_dict[headings][i])
                                 break
                             
                             #Edge case considering the final date window. Initialize with todays date and time
-                            elif key == "date2":
+                            elif key == "Date Signed":
                                 cum_string = datetime.today().strftime('%m/%d/%Y')
                                 break
-                        
+
+                            elif len(col_dict[headings]) != 0: 
+                                if key == "Check Box02" and col_dict[headings][i] == "English":
+                                    val_str = pdfrw.objects.pdfname.BasePdfName('/Yes')
+                                    blank.update(pdfrw.PdfDict(V=val_str))
+                                    break
+
+                                elif key == "Check Box200" and col_dict[headings][i] == "French":  
+                                    val_str = pdfrw.objects.pdfname.BasePdfName('/Yes')
+                                    blank.update(pdfrw.PdfDict(V=val_str))
+                                    break
+
+                        #Only want to fill in spaces if we have a value in the excel sheet 
                         if cum_string != "":
-                            print("What we are deleteing" ,headings)
-                            print(len(col_dict["Policyholder"]))
                             #Update the field inside of the PDF 
                             pdfstr = pdfrw.objects.pdfstring.PdfString.encode(cum_string)
                             blank.update(pdfrw.PdfDict(V=pdfstr))
                             #Remove the element from the list so it does not get repeated 
-                            #print(key)
-                            if key != "date2":
+                            #Since the current date is not a column we do not want to delete an element
+                            if key != "Date Signed":
                                 del (col_dict[headings][i])
+                            #Reset the cumulative string
                             cum_string = ""
 
                     #If there is a NoneType we want to catch the error so we can skip over it
@@ -128,6 +148,7 @@ try:
                         continue
             
         #Update the PDF so that the filled elements are visible from the start.
+        
         pdf_temp.Root.AcroForm.update(
             pdfrw.PdfDict(NeedAppearances=pdfrw.PdfObject('true')))
         #Write the new PDF to the location specified earlier
@@ -147,3 +168,5 @@ except xlrd.biffh.XLRDError:
     tkinter.messagebox.showerror(title="Error", message="You did not select the appropriate Excel Document.")
 except pdfrw.errors.PdfParseError:
     tkinter.messagebox.showerror(title="Error", message="You did not select the appropriate PDF Document.")
+
+os.startfile(cleaned_out)
