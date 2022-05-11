@@ -3,7 +3,7 @@ from math import trunc
 #Import tkinter library for GUI interface
 import tkinter
 from tkinter.filedialog import askopenfilename
-#Import tkinter for excel manipulation
+#Import xlrd for excel manipulation
 import xlrd
 #Import pdfrw for pdf manipulation
 import pdfrw
@@ -15,7 +15,7 @@ pol_dict = ["name of policyholder","name of plan sponsor"]
 cert_dict = ["certificateno","certificate number","institution code","cert#"]
 dob_dict = ["date of birth mmddyyyy","birthdate", ""]
 date_dict = ["date signed", "date2"]
-name_dict = ["plan member's name", "plan members name first middle initial last","full name of primary beneficiary first middle last" ]
+name_dict = ["plan member's name", "plan members name first middle initial last"]
 emp_dict = ["date employed full time mmddyyyy","date employed full time" ]
 
 
@@ -24,14 +24,14 @@ def PdfCreator():
         root = tkinter.Tk()
         root.wm_attributes('-topmost', 1)
         root.withdraw()
-
+    
         #GUI for XL worksheet
         xl_source = askopenfilename(parent=root, title="Choose the completed Excel Form", filetypes=[("Excel Workbooks",".xls")])
         #Opening worksheet with XLRD
         xl_file = xlrd.open_workbook(xl_source)
 
         #GUI for reference PDF location
-        output_dir = askopenfilename(parent=root,title="Choose PDF reference form",filetypes=[("PDF",".pdf")])
+        pdf_source = askopenfilename(parent=root,title="Choose PDF reference form",filetypes=[("PDF",".pdf")])
 
         #Take the sheet object from the workbook to access # of columns and rows 
         sheet = xl_file.sheets()
@@ -56,7 +56,7 @@ def PdfCreator():
                 col_dict[(sheet.cell_value(0,row))] = None
 
         #Scrape out the fillable fields from the PDF 
-        pdf_temp = pdfrw.PdfReader(output_dir)
+        pdf_temp = pdfrw.PdfReader(pdf_source)
         cum_string = ""
         counter = 0 
 
@@ -102,7 +102,7 @@ def PdfCreator():
                                     break
 
                                 #Concatenating the names into the singular field
-                                elif (key  in name_dict and ("name" in headings.lower() and " member" in headings.lower())):
+                                elif (key in name_dict and ("name" in headings.lower() and "member" in headings.lower())):
                                     cum_string += col_dict[headings][i] + " "
                         
                                     if headings == "Plan Member Last Name":
@@ -110,7 +110,7 @@ def PdfCreator():
                                         #Break and move to the next element
                                         break
 
-                                    else:
+                                    elif headings == "Plan Member First Name" or headings == "Plan Member Middle Name" : 
                                         del col_dict[headings][i]
 
                                 #Number of hours
@@ -124,7 +124,7 @@ def PdfCreator():
                                     break
                                 
                                 #Edge case considering the final date window. Initialize with todays date and time
-                                elif key  in date_dict:
+                                elif key in date_dict:
                                     cum_string = datetime.today().strftime('%m/%d/%Y')
                                     break
 
@@ -146,7 +146,8 @@ def PdfCreator():
                                 blank.update(pdfrw.PdfDict(V=pdfstr))
                                 #Remove the element from the list so it does not get repeated 
                                 #Since the current date is not a column we do not want to delete an element
-                                if key  not in date_dict:
+                                if key not in date_dict:
+                                    #print(len(col_dict.get("Plan Member Last Name")))
                                     del (col_dict[headings][i])
                                 #Reset the cumulative string
                                 cum_string = ""
@@ -160,8 +161,8 @@ def PdfCreator():
             pdf_temp.Root.AcroForm.update(
                 pdfrw.PdfDict(NeedAppearances=pdfrw.PdfObject('true')))
             #Write the new PDF to the location specified earlier
-            #print(output_dir)
-            split_out = output_dir.split('/')
+            #print(pdf_source)
+            split_out = pdf_source.split('/')
             split_out.pop(-1)
             cleaned_out ='/'.join(split_out)
             #print("This is cleaned out ", cleaned_out)
