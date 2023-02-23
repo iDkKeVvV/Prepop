@@ -1,10 +1,8 @@
 from doctest import master
 import pdfrw
 import os 
-
-path = r"C:\Users\svc_grp_training\OneDrive - The Equitable Life Insurance Company of Canada\Documents\Python Scripts\Prepop Project\DataSet\\"
+#The path here was removed for security reasons
 directory = os.fsencode(path)
-#directory = os.fsencode(r"C:\Users\svc_grp_training\OneDrive - The Equitable Life Insurance Company of Canada\Documents\Python Scripts\Prepop Project\PDF Library")
 
 wrd_dict = {}
 master_list = []
@@ -41,21 +39,7 @@ for file in os.listdir(directory):
                             
                             else:
                                 wrd_dict[key.lower()] += 1
-
-                        #print(key)
-                        # try:
-                        #     key = blank['/T'][1:-1]
-                        
-
-                        #     if (key,1) not in wrd_list:
-                        #         wrd_list.append((key,1))
-                            
-                        #     else:
-                        #         for i in range(len(wrd_list)):
-                        #             a,b = wrd_list[i]
-                        #             if a in wrd_list[i][0]:
-                        #                 wrd_list[i] = (a,b+1)
-
+                                
                         #If there is a NoneType we want to catch the error so we can skip over it
                         except TypeError:
                             continue
